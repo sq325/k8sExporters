@@ -1,0 +1,113 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    creationTimestamp: "2022-08-02T15:42:23Z"
+    labels:
+      run: busybox
+    name: busybox
+    namespace: default
+    resourceVersion: "904174"
+    uid: b6d08886-801b-4e01-8274-cc3c9cea49e4
+  spec:
+    containers:
+    - command:
+      - tail
+      - -f
+      - /dev/null
+      image: busybox
+      imagePullPolicy: IfNotPresent
+      name: busybox
+      resources: {}
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-rd5n2
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    nodeName: minikube
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-rd5n2
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2022-08-02T15:42:23Z"
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2022-12-31T08:31:18Z"
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2022-12-31T08:31:18Z"
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2022-08-02T15:42:23Z"
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - containerID: docker://8717a03475ca87bd0cdf394dda61ec308e000a11113d3f538759779f4a7958b5
+      image: busybox:latest
+      imageID: docker-pullable://busybox@sha256:ef320ff10026a50cf5f0213d35537ce0041ac1d96e9b7800bafd8bc9eff6c693
+      lastState:
+        terminated:
+          containerID: docker://45efb3779e2fab5b1f26078015caf124668ae3100debb3084516b63212013b27
+          exitCode: 255
+          finishedAt: "2022-12-31T08:30:59Z"
+          reason: Error
+          startedAt: "2022-12-19T06:53:15Z"
+      name: busybox
+      ready: true
+      restartCount: 14
+      started: true
+      state:
+        running:
+          startedAt: "2022-12-31T08:31:17Z"
+    hostIP: 192.168.49.2
+    phase: Running
+    podIP: 172.17.0.2
+    podIPs:
+    - ip: 172.17.0.2
+    qosClass: BestEffort
+    startTime: "2022-08-02T15:42:23Z"
+kind: List
+metadata:
+  resourceVersion: ""
