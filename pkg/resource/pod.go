@@ -22,34 +22,47 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 )
 
 // Service implement Resource interface
 // Pod define a pod resource
 type Pod struct {
-	name      string
-	namespace string
-	kind      string // title style
-	labels    map[string]string
+	namespaceName types.NamespacedName
+	uid           types.UID
+	kind          string // title style
+	labels        map[string]string
 }
 
 // NewPod create a new pod
-func NewPod(name, namespace string, labels map[string]string) *Pod {
+func NewPod(name, namespace string, uid types.UID, labels map[string]string) *Pod {
+	namespaceName := types.NamespacedName{
+		Namespace: namespace,
+		Name:      name,
+	}
 	return &Pod{
-		name:      name,
-		namespace: namespace,
-		kind:      "Pod",
-		labels:    labels,
+		namespaceName: namespaceName,
+		uid:           uid,
+		kind:          "Pod",
+		labels:        labels,
 	}
 }
 
 func (p *Pod) Name() string {
-	return p.name
+	return p.namespaceName.Name
+}
+
+func (p *Pod) UID() string {
+	return string(p.uid)
 }
 
 func (p *Pod) Namespace() string {
-	return p.namespace
+	return p.namespaceName.Namespace
+}
+
+func (p *Pod) String() string {
+	return p.namespaceName.String()
 }
 
 func (p *Pod) Kind() string {
@@ -86,7 +99,7 @@ func (p *PodFactor) GetResources() (Resources, error) {
 	}
 	var pods Resources
 	for _, npod := range podList.Items {
-		pod := NewPod(npod.Name, npod.Namespace, npod.Labels)
+		pod := NewPod(npod.Name, npod.Namespace, npod.UID, npod.Labels)
 		pods = append(pods, pod)
 	}
 
