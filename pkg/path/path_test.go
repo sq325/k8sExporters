@@ -12,6 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package hostvolume
+package path
 
+import (
+	"testing"
+)
 
+func TestPath(t *testing.T) {
+	// name := "/Users/sunquan/Documents/go/projects/k8sExporters"
+
+}
