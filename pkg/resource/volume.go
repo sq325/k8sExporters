@@ -1,4 +1,4 @@
-// Copyright 2023 sunquan
+// Copyright 2023 Sun Quan
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package nodevolume
+package resource
 
-import (
-	"testing"
-)
+import coreV1 "k8s.io/api/core/v1"
 
-func DirUsage(t *testing.T) {
-	// buf := new(unix.Statfs_t)
+type Volume struct {
+	volume *coreV1.Volume
+}
 
+func NewVolume(volume *coreV1.Volume) *Volume {
+	return &Volume{
+		volume: volume,
+	}
+}
+
+func (v *Volume) Name() string {
+	return v.volume.Name
+}
+
+func (v *Volume) Type() string {
+	var _type string
+	switch {
+	case v.volume.VolumeSource.HostPath != nil:
+		_type = "HostPath"
+	case v.volume.VolumeSource.EmptyDir != nil:
+		_type = "EmptyDir"
+	}
+	return _type
 }

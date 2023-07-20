@@ -1,4 +1,4 @@
-// Copyright 2023 sunquan
+// Copyright 2023 Sun Quan
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	"context"
 	"log"
 
+	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -29,6 +30,8 @@ import (
 // Service implement Resource interface
 // Pod define a pod resource
 type Pod struct {
+	pod           *coreV1.Pod
+	volumes       []*Volume
 	namespaceName types.NamespacedName
 	uid           types.UID
 	kind          string // title style
@@ -36,16 +39,24 @@ type Pod struct {
 }
 
 // NewPod create a new pod
-func NewPod(name, namespace string, uid types.UID, labels map[string]string) *Pod {
+func NewPod(pod *coreV1.Pod) *Pod {
 	namespaceName := types.NamespacedName{
-		Namespace: namespace,
-		Name:      name,
+		Namespace: pod.Namespace,
+		Name:      pod.Name,
+	}
+	var volumes []*Volume
+	for _, volume := range pod.Spec.Volumes {
+		if v := NewVolume(&volume); v.Type() != "" {
+			volumes = append(volumes, v)
+		}
 	}
 	return &Pod{
+		pod:           pod,
 		namespaceName: namespaceName,
-		uid:           uid,
+		volumes:       volumes,
+		uid:           pod.UID,
 		kind:          "Pod",
-		labels:        labels,
+		labels:        pod.Labels,
 	}
 }
 
@@ -59,6 +70,10 @@ func (p *Pod) UID() string {
 
 func (p *Pod) Namespace() string {
 	return p.namespaceName.Namespace
+}
+
+func (p *Pod) HostIP() string {
+	return p.pod.Status.HostIP
 }
 
 func (p *Pod) String() string {
@@ -99,7 +114,7 @@ func (p *PodFactor) GetResources() (Resources, error) {
 	}
 	var pods Resources
 	for _, npod := range podList.Items {
-		pod := NewPod(npod.Name, npod.Namespace, npod.UID, npod.Labels)
+		pod := NewPod(&npod)
 		pods = append(pods, pod)
 	}
 

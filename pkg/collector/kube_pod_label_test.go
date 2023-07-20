@@ -1,4 +1,4 @@
-package svcpodCollector
+package collector
 
 import (
 	"os"

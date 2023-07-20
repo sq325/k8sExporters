@@ -1,4 +1,4 @@
-// Copyright 2023 sunquan
+// Copyright 2023 Sun Quan
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package nodevolume
+package emptydir
 
 import (
 	"path/filepath"
@@ -32,21 +32,82 @@ func EscapeQualifiedName(in string) string {
 	return strings.Replace(in, "/", "~", -1)
 }
 
-type PodEmptyDir struct {
+type IPodEmptydir interface {
+	PodName() string
+	PodNamespace() string
+	PodUID() string
+	PodHostIP() string
+	EmptydirSizeBytes() int64
+}
+
+// PodEmptyDir implement PodEmptydirFactor interface
+type PodEmptydir struct {
 	Pod      *resource.Pod
 	EmptyDir *EmptyDir
 }
 
-func NewPodEmptyDir(pod *resource.Pod, prefixPath string) (*PodEmptyDir, error) {
+func NewPodEmptydir(pod *resource.Pod, prefixPath string) (*PodEmptydir, error) {
 	uid := pod.UID()
 	emptydir, err := NewEmptyDir(prefixPath, uid)
 	if err != nil {
 		return nil, err
 	}
-	return &PodEmptyDir{
+	return &PodEmptydir{
 		Pod:      pod,
 		EmptyDir: emptydir,
 	}, nil
+}
+
+func (p *PodEmptydir) PodName() string {
+	return p.Pod.Name()
+}
+
+func (p *PodEmptydir) PodNamespace() string {
+	return p.Pod.Namespace()
+}
+
+func (p *PodEmptydir) PodUID() string {
+	return p.Pod.UID()
+}
+
+func (p *PodEmptydir) PodHostIP() string {
+	return p.Pod.HostIP()
+}
+
+func (p *PodEmptydir) EmptydirSizeBytes() int64 {
+	return p.EmptyDir.SizeBytes()
+}
+
+// {prefixPath}/{uid}/{DefaultKubeletVolumesDirName}/{emptyDirPluginName}
+type EmptyDir struct {
+	VolumePath *path.Path
+}
+
+func NewEmptyDir(prefixPath, uid string) (*EmptyDir, error) {
+	path, err := path.NewPath(filepath.Join(prefixPath, uid, DefaultKubeletVolumesDirName, emptyDirPluginName))
+	if err != nil {
+		return nil, err
+	}
+	return &EmptyDir{
+		VolumePath: path,
+	}, nil
+}
+
+// /var/lib/kubelet/pods/uid/{DefaultKubeletVolumesDirName}/{emptyDirPluginName}
+func (e *EmptyDir) Path() *path.Path {
+	return e.VolumePath
+}
+
+// global var
+func (e *EmptyDir) PluginName() string {
+	return emptyDirPluginName
+}
+
+func (e *EmptyDir) SizeBytes() int64 {
+	return e.Path().Size()
+}
+
+type NodeEmptydir struct {
 }
 
 // type EmptyDirList []*EmptyDir
@@ -79,34 +140,3 @@ func NewPodEmptyDir(pod *resource.Pod, prefixPath string) (*PodEmptyDir, error) 
 
 // 	return emptyDirList, errs
 // }
-
-// emptyDir 代表某一个node上所有的emptydir
-// 由node上的pod的emptydir组成
-// {prefixPath}/{uid}/{DefaultKubeletVolumesDirName}/{emptyDirPluginName}
-type EmptyDir struct {
-	VolumePath *path.Path
-}
-
-func NewEmptyDir(prefixPath, uid string) (*EmptyDir, error) {
-	path, err := path.NewPath(filepath.Join(prefixPath, DefaultKubeletVolumesDirName, emptyDirPluginName))
-	if err != nil {
-		return nil, err
-	}
-	return &EmptyDir{
-		VolumePath: path,
-	}, nil
-}
-
-// /var/lib/kubelet/pods/uid/{DefaultKubeletVolumesDirName}/{emptyDirPluginName}
-func (e *EmptyDir) Path() *path.Path {
-	return e.VolumePath
-}
-
-// global var
-func (e *EmptyDir) PluginName() string {
-	return emptyDirPluginName
-}
-
-func (e *EmptyDir) SizeByte() int64 {
-	return e.Path().Size()
-}

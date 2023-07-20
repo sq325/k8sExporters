@@ -1,4 +1,4 @@
-// Copyright 2023 sunquan
+// Copyright 2023 Sun Quan
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,12 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
+	"github.com/prometheus/client_golang/prometheus"
+	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/spf13/pflag"
-	"github.com/sq325/k8sExporters/pkg/nodevolume"
+	"github.com/sq325/k8sExporters/pkg/emptydir"
 	"github.com/sq325/k8sExporters/pkg/resource"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -54,16 +57,31 @@ func main() {
 		log.Fatal(err)
 	}
 	podfactor := resource.NewPodFactor(clientset)
-	podlist, err := podfactor.GetResources()
+	allpodlist, err := podfactor.GetResources() // all pods in the cluster
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, pod := range podlist {
-		podemptydir, err := nodevolume.NewPodEmptyDir(pod.(*resource.Pod), *prefixPath)
+	for _, pod := range allpodlist {
+		podemptydir, err := emptydir.NewPodEmptydir(pod.(*resource.Pod), *prefixPath)
 		if err != nil {
+			if os.IsNotExist(err) {
+				log.Println(err)
+				continue
+			}
 			log.Fatal(err)
 		}
-		fmt.Println(podemptydir.Pod.Name(), podemptydir.EmptyDir.SizeByte())
+		fmt.Println(podemptydir.Pod.Name(), podemptydir.EmptyDir.SizeBytes())
 	}
+
+	// collector := emptydircollector.NewEmptydirCollector(allpodlist, , *prefixPath)
+	// collector := emptydirCollector.NewEmptydirCollector(podlist, emptydir.PodEmptydirFactor{}, *prefixPath)
+	PromRegister()
+}
+
+func PromRegister() {
+	prometheus.Unregister(promcollectors.NewProcessCollector(promcollectors.ProcessCollectorOpts{}))
+	prometheus.Unregister(promcollectors.NewGoCollector())
+	// prometheus.Register()
+
 }

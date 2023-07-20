@@ -12,8 +12,8 @@ import (
 	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
+	"github.com/sq325/k8sExporters/pkg/collector"
 	"github.com/sq325/k8sExporters/pkg/resource"
-	"github.com/sq325/k8sExporters/pkg/svcpodCollector"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -77,8 +77,8 @@ func main() {
 	svcfactor := resource.NewSvcFactor(clientset)
 	prometheus.Unregister(promcollectors.NewProcessCollector(promcollectors.ProcessCollectorOpts{}))
 	prometheus.Unregister(promcollectors.NewGoCollector())
-	prometheus.Register(svcpodCollector.NewPodCollector(podfactor))
-	prometheus.Register(svcpodCollector.NewSvcCollector(svcfactor))
+	prometheus.Register(collector.NewPodCollector(podfactor))
+	prometheus.Register(collector.NewSvcCollector(svcfactor))
 
 	// start http server
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
