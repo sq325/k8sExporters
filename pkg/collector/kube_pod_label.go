@@ -24,7 +24,7 @@ var (
 
 type PodCollector struct {
 	cv     *prometheus.CounterVec
-	factor resource.Factor
+	factor *resource.PodFactor
 }
 
 func (c *PodCollector) Describe(ch chan<- *prometheus.Desc) {
@@ -32,7 +32,7 @@ func (c *PodCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *PodCollector) Collect(ch chan<- prometheus.Metric) {
-	pods, err := c.factor.GetResources()
+	pods, err := c.factor.GetPods()
 	if err != nil {
 		log.Println(err)
 		return
@@ -51,7 +51,7 @@ func (c *PodCollector) Collect(ch chan<- prometheus.Metric) {
 	c.cv.Collect(ch)
 }
 
-func NewPodCollector(factor resource.Factor) prometheus.Collector {
+func NewPodCollector(factor *resource.PodFactor) prometheus.Collector {
 	return &PodCollector{
 		cv:     podCounterVec,
 		factor: factor,

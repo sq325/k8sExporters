@@ -31,7 +31,7 @@ import (
 // Pod define a pod resource
 type Pod struct {
 	pod           *coreV1.Pod
-	volumes       []*Volume
+	Volumes       []*Volume
 	namespaceName types.NamespacedName
 	uid           types.UID
 	kind          string // title style
@@ -46,6 +46,7 @@ func NewPod(pod *coreV1.Pod) *Pod {
 	}
 	var volumes []*Volume
 	for _, volume := range pod.Spec.Volumes {
+		volume := volume // notice
 		if v := NewVolume(&volume); v.Type() != "" {
 			volumes = append(volumes, v)
 		}
@@ -53,7 +54,7 @@ func NewPod(pod *coreV1.Pod) *Pod {
 	return &Pod{
 		pod:           pod,
 		namespaceName: namespaceName,
-		volumes:       volumes,
+		Volumes:       volumes,
 		uid:           pod.UID,
 		kind:          "Pod",
 		labels:        pod.Labels,
@@ -100,11 +101,11 @@ type PodFactor struct {
 	ClientSet *kubernetes.Clientset
 }
 
-func NewPodFactor(clientSet *kubernetes.Clientset) Factor {
+func NewPodFactor(clientSet *kubernetes.Clientset) *PodFactor {
 	return &PodFactor{ClientSet: clientSet}
 }
 
-func (p *PodFactor) GetResources() (Resources, error) {
+func (p *PodFactor) GetPods() (Pods, error) {
 	podList, err := p.ClientSet.CoreV1().Pods("").List(context.Background(), v1.ListOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -112,7 +113,7 @@ func (p *PodFactor) GetResources() (Resources, error) {
 		}
 		return nil, err
 	}
-	var pods Resources
+	var pods Pods
 	for _, npod := range podList.Items {
 		pod := NewPod(&npod)
 		pods = append(pods, pod)

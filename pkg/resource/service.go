@@ -53,13 +53,13 @@ type SvcFactor struct {
 	ClientSet *kubernetes.Clientset
 }
 
-func NewSvcFactor(clientSet *kubernetes.Clientset) Factor {
+func NewSvcFactor(clientSet *kubernetes.Clientset) *SvcFactor {
 	return &SvcFactor{
 		ClientSet: clientSet,
 	}
 }
 
-func (s *SvcFactor) GetResources() (Resources, error) {
+func (s *SvcFactor) GetSvcs() (Svcs, error) {
 	svcList, err := s.ClientSet.CoreV1().Services("").List(context.Background(), v1.ListOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -68,7 +68,7 @@ func (s *SvcFactor) GetResources() (Resources, error) {
 		return nil, err
 	}
 
-	var svcs Resources
+	var svcs Svcs
 	for _, nsvc := range svcList.Items {
 		svc := NewSvc(nsvc.Name, nsvc.Namespace, nsvc.Spec.Selector, nsvc.Labels)
 		svcs = append(svcs, svc)

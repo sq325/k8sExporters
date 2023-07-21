@@ -17,12 +17,15 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
+	"net"
+	"net/http"
+	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
 	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
-	"github.com/sq325/k8sExporters/pkg/emptydir"
+	"github.com/sq325/k8sExporters/pkg/collector"
 	"github.com/sq325/k8sExporters/pkg/resource"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -34,6 +37,7 @@ const (
 
 var (
 	// /var/lib/kubelet/pods/uid/volumes/kubernetes.io~empty-dir
+	port       *string = pflag.StringP("port", "p", "0", "listening port")
 	prefixPath *string = pflag.String("prefixPath", "/var/lib/kubelet/pods", "the path of emptydir mount in node")
 	version    *bool   = pflag.BoolP("version", "v", false, "Version info")
 )
@@ -57,31 +61,44 @@ func main() {
 		log.Fatal(err)
 	}
 	podfactor := resource.NewPodFactor(clientset)
-	allpodlist, err := podfactor.GetResources() // all pods in the cluster
+	allpodlist, err := podfactor.GetPods() // all pods in the cluster
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, pod := range allpodlist {
-		podemptydir, err := emptydir.NewPodEmptydir(pod.(*resource.Pod), *prefixPath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				log.Println(err)
-				continue
-			}
-			log.Fatal(err)
-		}
-		fmt.Println(podemptydir.Pod.Name(), podemptydir.EmptyDir.SizeBytes())
+	collector, err := collector.NewEmptydirCollector(allpodlist, *prefixPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// collector := emptydirCollector.NewEmptydirCollector(podlist, emptydir.PodEmptydirFactor{}, *prefixPath)
+	PromRegister(collector)
+
+	// http server
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<html>
+				<head><title>Emptydir Exporter</title></head>
+				<body>
+				<h1>emptydir usage</h1>
+				<p>please click <a href="` + "metrics" + `">Metrics</a></p>
+				</body>
+				</html>`))
+	})
+	http.Handle("/metrics", promhttp.Handler())
+	listener, err := net.Listen("tcp", ":"+*port)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	// collector := emptydircollector.NewEmptydirCollector(allpodlist, , *prefixPath)
-	// collector := emptydirCollector.NewEmptydirCollector(podlist, emptydir.PodEmptydirFactor{}, *prefixPath)
-	PromRegister()
+	log.Println("Address:", listener.Addr().String())
+	_port := strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
+	log.Println("Listening port:", _port)
+	log.Println("Metrics Url: http://<ip>:" + _port + "/metrics")
+	log.Fatal(http.Serve(listener, nil))
 }
 
-func PromRegister() {
+func PromRegister(c prometheus.Collector) {
 	prometheus.Unregister(promcollectors.NewProcessCollector(promcollectors.ProcessCollectorOpts{}))
 	prometheus.Unregister(promcollectors.NewGoCollector())
-	// prometheus.Register()
+	prometheus.Register(c)
 
 }

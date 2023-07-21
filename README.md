@@ -23,3 +23,55 @@ kube_service_selector{name="kubernetes",namespace="default",selector=""} 1
 kube_service_selector{name="metrics-server",namespace="kube-system",selector="{\"k8s-app\":\"metrics-server\"}"} 1
 kube_service_selector{name="prometheus",namespace="monitoring",selector="{\"app\":\"prometheus\"}"} 1
 ```
+
+---
+
+
+```mermaid
+classDiagram
+  class EmptyDir {
+    path   *path.Path
+	  volume *Volume
+  }
+  class IPodEmptydir {
+    <<interface>>
+    + PodName() string
+    + PodNamespace() string
+    + PodUID() string
+    + PodHostIP() string
+    + EmptydirListSizeBytes() map[string]int64
+  }
+  class PodEmptyDir {
+	  + Pod          *Pod
+	  + EmptydirList []*EmptyDir
+  }
+  class Pod {
+    - pod           *coreV1.Pod
+    - volumes       []*Volume
+  }
+
+  class Volume  {
+    - volume *coreV1.Volume
+    + Name() string
+    + Type() string
+  }
+  class coreV1Pod {
+    + TypeMeta 
+	  + Spec PodSpec 
+  	+ Status PodStatus 
+  }
+
+  class coreV1Volume {
+    + Name string
+    + VolumeSource
+  }
+  
+  EmptyDir o--> Volume
+  coreV1Pod o--> coreV1Volume
+  Volume o--> coreV1Volume
+  Pod o--> coreV1Pod
+  PodEmptyDir o--> Pod: 组合
+  Pod o--> Volume: 组合
+  IPodEmptydir <|.. PodEmptyDir: implements
+  PodEmptyDir o--> EmptyDir: 组合
+```

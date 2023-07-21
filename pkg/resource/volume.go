@@ -26,6 +26,16 @@ func NewVolume(volume *coreV1.Volume) *Volume {
 	}
 }
 
+func (v *Volume) SizeLimit() int64 {
+	var sizeLimit int64
+	if v.Type() == "EmptyDir" {
+		if v.volume.VolumeSource.EmptyDir.SizeLimit != nil {
+			sizeLimit = v.volume.VolumeSource.EmptyDir.SizeLimit.Value()
+		}
+	}
+	return sizeLimit
+}
+
 func (v *Volume) Name() string {
 	return v.volume.Name
 }
@@ -33,10 +43,10 @@ func (v *Volume) Name() string {
 func (v *Volume) Type() string {
 	var _type string
 	switch {
-	case v.volume.VolumeSource.HostPath != nil:
-		_type = "HostPath"
 	case v.volume.VolumeSource.EmptyDir != nil:
 		_type = "EmptyDir"
+	case v.volume.VolumeSource.HostPath != nil:
+		_type = "HostPath"
 	}
 	return _type
 }

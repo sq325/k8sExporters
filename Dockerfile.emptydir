@@ -8,14 +8,15 @@ ADD go.sum .
 RUN go mod download
 COPY . .
 # RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o emptydir
-WORKDIR /build/cmd/volUsageExporter/
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /app/emptydir
+WORKDIR /build/cmd/emptydirSizeExporter/
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o /app/emptydir
 
-FROM alpine:latest
+FROM alpine:latest@sha256:25fad2a32ad1f6f510e528448ae1ec69a28ef81916a004d3629874104f8a7f70
 # FROM alpine:latest
 LABEL date="2023-07-19"
 COPY --from=builder /usr/share/zoneinfo/Asia/Shanghai /usr/share/zoneinfo/Asia/Shanghai
 ENV TZ Asia/Shanghai
 WORKDIR /app
 COPY --from=builder /app/emptydir /app/emptydir
+EXPOSE 8080
 ENTRYPOINT ["/app/emptydir"]

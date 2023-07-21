@@ -23,7 +23,7 @@ var (
 
 type SvcCollector struct {
 	cv     *prometheus.CounterVec
-	factor resource.Factor
+	factor *resource.SvcFactor
 }
 
 func (c *SvcCollector) Describe(ch chan<- *prometheus.Desc) {
@@ -31,7 +31,7 @@ func (c *SvcCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *SvcCollector) Collect(ch chan<- prometheus.Metric) {
-	svcs, err := c.factor.GetResources()
+	svcs, err := c.factor.GetSvcs()
 	if err != nil {
 		log.Println(err)
 		return
@@ -50,7 +50,7 @@ func (c *SvcCollector) Collect(ch chan<- prometheus.Metric) {
 	c.cv.Collect(ch)
 }
 
-func NewSvcCollector(factor resource.Factor) prometheus.Collector {
+func NewSvcCollector(factor *resource.SvcFactor) prometheus.Collector {
 	return &SvcCollector{
 		cv:     svcCounterVec,
 		factor: factor,

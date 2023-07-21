@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package emptydir
+package volumes
 
 import (
+	"errors"
+	"fmt"
+	"log"
 	"path/filepath"
 	"strings"
 
@@ -37,24 +40,31 @@ type IPodEmptydir interface {
 	PodNamespace() string
 	PodUID() string
 	PodHostIP() string
-	EmptydirSizeBytes() int64
+	EmptydirListSizeBytes() map[string]int64
+	EmptydirListSizeLimitBytes() map[string]int64
 }
 
 // PodEmptyDir implement PodEmptydirFactor interface
 type PodEmptydir struct {
-	Pod      *resource.Pod
-	EmptyDir *EmptyDir
+	Pod          *resource.Pod
+	EmptydirList []*EmptyDir
 }
 
 func NewPodEmptydir(pod *resource.Pod, prefixPath string) (*PodEmptydir, error) {
 	uid := pod.UID()
-	emptydir, err := NewEmptyDir(prefixPath, uid)
-	if err != nil {
-		return nil, err
+
+	var emptydirList []*EmptyDir
+	for _, v := range pod.Volumes {
+		emptydir, err := NewEmptyDir(prefixPath, uid, v)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		emptydirList = append(emptydirList, emptydir)
 	}
 	return &PodEmptydir{
-		Pod:      pod,
-		EmptyDir: emptydir,
+		Pod:          pod,
+		EmptydirList: emptydirList,
 	}, nil
 }
 
@@ -74,28 +84,54 @@ func (p *PodEmptydir) PodHostIP() string {
 	return p.Pod.HostIP()
 }
 
-func (p *PodEmptydir) EmptydirSizeBytes() int64 {
-	return p.EmptyDir.SizeBytes()
+func (p *PodEmptydir) EmptydirListSizeBytes() map[string]int64 {
+	if len(p.EmptydirList) == 0 {
+		return nil
+	}
+	m := make(map[string]int64)
+	for _, e := range p.EmptydirList {
+		m[e.volume.Name()] = e.SizeBytes()
+	}
+	return m
 }
 
-// {prefixPath}/{uid}/{DefaultKubeletVolumesDirName}/{emptyDirPluginName}
+func (p *PodEmptydir) EmptydirListSizeLimitBytes() map[string]int64 {
+	if len(p.EmptydirList) == 0 {
+		return nil
+	}
+	m := make(map[string]int64)
+	for _, e := range p.EmptydirList {
+		m[e.volume.Name()] = e.volume.SizeLimit()
+	}
+	return m
+}
+
+// {prefixPath}/{uid}/{DefaultKubeletVolumesDirName}/{emptyDirPluginName}/{emptydirName}
 type EmptyDir struct {
-	VolumePath *path.Path
+	path   *path.Path
+	volume *resource.Volume
 }
 
-func NewEmptyDir(prefixPath, uid string) (*EmptyDir, error) {
-	path, err := path.NewPath(filepath.Join(prefixPath, uid, DefaultKubeletVolumesDirName, emptyDirPluginName))
+// NewEmptyDir代表此uid的pod volumes中的 名称为{emptydirName} 的emptydir
+func NewEmptyDir(prefixPath, uid string, volume *resource.Volume) (*EmptyDir, error) {
+	if volume.Type() != "EmptyDir" {
+		return nil, errors.New(fmt.Sprint("pod", uid, "volume type is not EmptyDir"))
+	}
+
+	emptydirName := volume.Name()
+	path, err := path.NewPath(filepath.Join(prefixPath, uid, DefaultKubeletVolumesDirName, emptyDirPluginName, emptydirName))
 	if err != nil {
 		return nil, err
 	}
 	return &EmptyDir{
-		VolumePath: path,
+		path:   path,
+		volume: volume,
 	}, nil
 }
 
 // /var/lib/kubelet/pods/uid/{DefaultKubeletVolumesDirName}/{emptyDirPluginName}
 func (e *EmptyDir) Path() *path.Path {
-	return e.VolumePath
+	return e.path
 }
 
 // global var
