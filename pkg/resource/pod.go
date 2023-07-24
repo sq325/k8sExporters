@@ -31,7 +31,6 @@ import (
 // Pod define a pod resource
 type Pod struct {
 	pod           *coreV1.Pod
-	Volumes       []*Volume
 	namespaceName types.NamespacedName
 	uid           types.UID
 	kind          string // title style
@@ -39,22 +38,15 @@ type Pod struct {
 }
 
 // NewPod create a new pod
-func NewPod(pod *coreV1.Pod) *Pod {
+func NewPod(pod coreV1.Pod) *Pod {
 	namespaceName := types.NamespacedName{
 		Namespace: pod.Namespace,
 		Name:      pod.Name,
 	}
-	var volumes []*Volume
-	for _, volume := range pod.Spec.Volumes {
-		volume := volume // notice
-		if v := NewVolume(&volume); v.Type() != "" {
-			volumes = append(volumes, v)
-		}
-	}
+
 	return &Pod{
-		pod:           pod,
+		pod:           &pod,
 		namespaceName: namespaceName,
-		Volumes:       volumes,
 		uid:           pod.UID,
 		kind:          "Pod",
 		labels:        pod.Labels,
@@ -75,6 +67,17 @@ func (p *Pod) Namespace() string {
 
 func (p *Pod) HostIP() string {
 	return p.pod.Status.HostIP
+}
+
+func (p *Pod) Volumes() []*Volume {
+	var volumes []*Volume
+	for _, volume := range p.pod.Spec.Volumes {
+		volume := volume // notice
+		if v := NewVolume(&volume); v.Type() != "" {
+			volumes = append(volumes, v)
+		}
+	}
+	return volumes
 }
 
 func (p *Pod) String() string {
@@ -115,7 +118,7 @@ func (p *PodFactor) GetPods() (Pods, error) {
 	}
 	var pods Pods
 	for _, npod := range podList.Items {
-		pod := NewPod(&npod)
+		pod := NewPod(npod)
 		pods = append(pods, pod)
 	}
 

@@ -28,26 +28,27 @@ kube_service_selector{name="prometheus",namespace="monitoring",selector="{\"app\
 
 
 ```mermaid
+
 classDiagram
   class EmptyDir {
-    path   *path.Path
-	  volume *Volume
+    - path   *path.Path
+	  - volume *Volume
   }
-  class IPodEmptydir {
+  class IPodEmptydirs {
     <<interface>>
     + PodName() string
     + PodNamespace() string
     + PodUID() string
     + PodHostIP() string
     + EmptydirListSizeBytes() map[string]int64
+    + EmptydirListSizeLimitBytes() map[string]int64
   }
-  class PodEmptyDir {
+  class PodEmptyDirs {
 	  + Pod          *Pod
 	  + EmptydirList []*EmptyDir
   }
   class Pod {
     - pod           *coreV1.Pod
-    - volumes       []*Volume
   }
 
   class Volume  {
@@ -65,13 +66,18 @@ classDiagram
     + Name string
     + VolumeSource
   }
+  class Path {
+    + AbsPath  string
+    + IsDir    bool
+    - fileSize int64
+  }
   
+  EmptyDir o--> Path
   EmptyDir o--> Volume
   coreV1Pod o--> coreV1Volume
   Volume o--> coreV1Volume
   Pod o--> coreV1Pod
-  PodEmptyDir o--> Pod: 组合
-  Pod o--> Volume: 组合
-  IPodEmptydir <|.. PodEmptyDir: implements
-  PodEmptyDir o--> EmptyDir: 组合
+  PodEmptyDirs o--> Pod: 组合
+  IPodEmptydirs <|.. PodEmptyDirs: implements
+  PodEmptyDirs o--> EmptyDir: 组合
 ```

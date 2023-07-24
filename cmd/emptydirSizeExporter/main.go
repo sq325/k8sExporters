@@ -32,7 +32,7 @@ import (
 )
 
 const (
-	versionInfo = "v1.0"
+	versionInfo = "v1.1"
 )
 
 var (
@@ -46,6 +46,7 @@ func main() {
 	pflag.Parse()
 	if *version {
 		fmt.Println(versionInfo)
+		return
 	}
 
 	// service account
@@ -61,17 +62,12 @@ func main() {
 		log.Fatal(err)
 	}
 	podfactor := resource.NewPodFactor(clientset)
-	allpodlist, err := podfactor.GetPods() // all pods in the cluster
-	if err != nil {
-		log.Fatal(err)
-	}
 
-	collector, err := collector.NewEmptydirCollector(allpodlist, *prefixPath)
+	pesCollector, err := collector.NewEmptydirCollector(podfactor, *prefixPath)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("NewEmptydirCollector Error:", err)
 	}
-	// collector := emptydirCollector.NewEmptydirCollector(podlist, emptydir.PodEmptydirFactor{}, *prefixPath)
-	PromRegister(collector)
+	PromRegister(pesCollector)
 
 	// http server
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -100,5 +96,4 @@ func PromRegister(c prometheus.Collector) {
 	prometheus.Unregister(promcollectors.NewProcessCollector(promcollectors.ProcessCollectorOpts{}))
 	prometheus.Unregister(promcollectors.NewGoCollector())
 	prometheus.Register(c)
-
 }

@@ -35,7 +35,7 @@ func EscapeQualifiedName(in string) string {
 	return strings.Replace(in, "/", "~", -1)
 }
 
-type IPodEmptydir interface {
+type IPodEmptydirs interface {
 	PodName() string
 	PodNamespace() string
 	PodUID() string
@@ -45,16 +45,16 @@ type IPodEmptydir interface {
 }
 
 // PodEmptyDir implement PodEmptydirFactor interface
-type PodEmptydir struct {
+type PodEmptydirs struct {
 	Pod          *resource.Pod
 	EmptydirList []*EmptyDir
 }
 
-func NewPodEmptydir(pod *resource.Pod, prefixPath string) (*PodEmptydir, error) {
+func NewPodEmptydirs(pod *resource.Pod, prefixPath string) (*PodEmptydirs, error) {
 	uid := pod.UID()
 
 	var emptydirList []*EmptyDir
-	for _, v := range pod.Volumes {
+	for _, v := range pod.Volumes() {
 		emptydir, err := NewEmptyDir(prefixPath, uid, v)
 		if err != nil {
 			log.Println(err)
@@ -62,29 +62,29 @@ func NewPodEmptydir(pod *resource.Pod, prefixPath string) (*PodEmptydir, error) 
 		}
 		emptydirList = append(emptydirList, emptydir)
 	}
-	return &PodEmptydir{
+	return &PodEmptydirs{
 		Pod:          pod,
 		EmptydirList: emptydirList,
 	}, nil
 }
 
-func (p *PodEmptydir) PodName() string {
+func (p *PodEmptydirs) PodName() string {
 	return p.Pod.Name()
 }
 
-func (p *PodEmptydir) PodNamespace() string {
+func (p *PodEmptydirs) PodNamespace() string {
 	return p.Pod.Namespace()
 }
 
-func (p *PodEmptydir) PodUID() string {
+func (p *PodEmptydirs) PodUID() string {
 	return p.Pod.UID()
 }
 
-func (p *PodEmptydir) PodHostIP() string {
+func (p *PodEmptydirs) PodHostIP() string {
 	return p.Pod.HostIP()
 }
 
-func (p *PodEmptydir) EmptydirListSizeBytes() map[string]int64 {
+func (p *PodEmptydirs) EmptydirListSizeBytes() map[string]int64 {
 	if len(p.EmptydirList) == 0 {
 		return nil
 	}
@@ -95,7 +95,7 @@ func (p *PodEmptydir) EmptydirListSizeBytes() map[string]int64 {
 	return m
 }
 
-func (p *PodEmptydir) EmptydirListSizeLimitBytes() map[string]int64 {
+func (p *PodEmptydirs) EmptydirListSizeLimitBytes() map[string]int64 {
 	if len(p.EmptydirList) == 0 {
 		return nil
 	}
@@ -115,7 +115,7 @@ type EmptyDir struct {
 // NewEmptyDir代表此uid的pod volumes中的 名称为{emptydirName} 的emptydir
 func NewEmptyDir(prefixPath, uid string, volume *resource.Volume) (*EmptyDir, error) {
 	if volume.Type() != "EmptyDir" {
-		return nil, errors.New(fmt.Sprint("pod", uid, "volume type is not EmptyDir"))
+		return nil, errors.New(fmt.Sprint("pod: ", uid, " volume type is not EmptyDir"))
 	}
 
 	emptydirName := volume.Name()

@@ -22,7 +22,7 @@ import (
 	"github.com/sq325/k8sExporters/pkg/volumes"
 )
 
-// pod_emptydir_sizeBytes metric meta info
+// metrics meta info
 var (
 	sizeMetricName      = "pod_emptydir_size_bytes"
 	sizeMetricHelp      = "pod_emptydir_size_bytes displays the size of emptydir in pod"
@@ -46,25 +46,19 @@ var (
 
 // Emptydircollector implement prometheus.Collector interface
 type EmptydirCollector struct {
-	podEmptydirList    []volumes.IPodEmptydir
+	// /var/lib/kubelet/pods
+	prefixPath string
+	podfactor  *resource.PodFactor
+
 	size_gaugeVec      *prometheus.GaugeVec
 	sizeLimit_gaugeVec *prometheus.GaugeVec
 }
 
-// podList is a list of pod in this node
-func NewEmptydirCollector(podList []*resource.Pod, prefixPath string) (*EmptydirCollector, error) {
-	var podEmptydirList []volumes.IPodEmptydir
-	for _, pod := range podList {
-		podEmptydir, err := volumes.NewPodEmptydir(pod, prefixPath)
-		if err != nil {
-			log.Println("ERROR", err)
-			continue
-		}
-		podEmptydirList = append(podEmptydirList, podEmptydir)
-	}
-
+// NewEmptydirCollector create a new emptydir collector for all pods in the cluster
+func NewEmptydirCollector(factor *resource.PodFactor, prefixPath string) (*EmptydirCollector, error) {
 	return &EmptydirCollector{
-		podEmptydirList:    podEmptydirList,
+		prefixPath:         prefixPath,
+		podfactor:          factor,
 		size_gaugeVec:      size_gaugeVec,
 		sizeLimit_gaugeVec: sizeLimit_gaugeVec,
 	}, nil
@@ -76,7 +70,8 @@ func (e *EmptydirCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (e *EmptydirCollector) Collect(ch chan<- prometheus.Metric) {
-	for _, pod_emptydir := range e.podEmptydirList {
+	podemptydirList := e.getPodEmptydirList()
+	for _, pod_emptydir := range podemptydirList {
 		for vn, vs := range pod_emptydir.EmptydirListSizeBytes() {
 			e.size_gaugeVec.WithLabelValues(pod_emptydir.PodNamespace(), pod_emptydir.PodName(), pod_emptydir.PodHostIP(), vn).Set(float64(vs))
 		}
@@ -86,4 +81,23 @@ func (e *EmptydirCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 	e.size_gaugeVec.Collect(ch)
 	e.sizeLimit_gaugeVec.Collect(ch)
+}
+
+func (e *EmptydirCollector) getPodEmptydirList() []volumes.IPodEmptydirs {
+	podlist, err := e.podfactor.GetPods() // all pods in the cluster
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var podEmptydirList []volumes.IPodEmptydirs
+	for _, pod := range podlist {
+
+		podEmptydirs, err := volumes.NewPodEmptydirs(pod, e.prefixPath)
+		if err != nil {
+			log.Println("ERROR:", err)
+			continue
+		}
+		podEmptydirList = append(podEmptydirList, podEmptydirs)
+	}
+	return podEmptydirList
 }
