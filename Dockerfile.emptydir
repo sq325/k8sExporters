@@ -11,9 +11,9 @@ WORKDIR /build/cmd/emptydirSizeExporter/
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o /app/emptydir
 # RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o /app/emptydir
 
-FROM alpine:latest@sha256:25fad2a32ad1f6f510e528448ae1ec69a28ef81916a004d3629874104f8a7f70
+FROM alpine:latest@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0
 # FROM alpine:latest
-LABEL date="2023-07-24"
+LABEL date="2024-04-16"
 COPY --from=builder /usr/share/zoneinfo/Asia/Shanghai /usr/share/zoneinfo/Asia/Shanghai
 ENV TZ Asia/Shanghai
 WORKDIR /app

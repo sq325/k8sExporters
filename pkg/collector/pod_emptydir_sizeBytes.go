@@ -34,14 +34,18 @@ var (
 )
 
 var (
-	size_gaugeVec *prometheus.GaugeVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: sizeMetricName,
-		Help: sizeMetricHelp,
-	}, sizeMetricLabelKeys)
-	sizeLimit_gaugeVec *prometheus.GaugeVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: sizeLimitName,
-		Help: sizeLimitHelp,
-	}, sizeLimitLabelKeys)
+	sizeDesc *prometheus.Desc = prometheus.NewDesc(
+		sizeMetricName,
+		sizeLimitHelp,
+		sizeMetricLabelKeys,
+		nil,
+	)
+	sizeLimitDesc *prometheus.Desc = prometheus.NewDesc(
+		sizeLimitName,
+		sizeLimitHelp,
+		sizeLimitLabelKeys,
+		nil,
+	)
 )
 
 // Emptydircollector implement prometheus.Collector interface
@@ -50,37 +54,35 @@ type EmptydirCollector struct {
 	prefixPath string
 	podfactor  *resource.PodFactor
 
-	size_gaugeVec      *prometheus.GaugeVec
-	sizeLimit_gaugeVec *prometheus.GaugeVec
+	sizeDesc      *prometheus.Desc
+	sizeLimitDesc *prometheus.Desc
 }
 
 // NewEmptydirCollector create a new emptydir collector for all pods in the cluster
 func NewEmptydirCollector(factor *resource.PodFactor, prefixPath string) (*EmptydirCollector, error) {
 	return &EmptydirCollector{
-		prefixPath:         prefixPath,
-		podfactor:          factor,
-		size_gaugeVec:      size_gaugeVec,
-		sizeLimit_gaugeVec: sizeLimit_gaugeVec,
+		prefixPath:    prefixPath,
+		podfactor:     factor,
+		sizeDesc:      sizeDesc,
+		sizeLimitDesc: sizeLimitDesc,
 	}, nil
 }
 
 func (e *EmptydirCollector) Describe(ch chan<- *prometheus.Desc) {
-	e.size_gaugeVec.Describe(ch)
-	e.sizeLimit_gaugeVec.Describe(ch)
+	ch <- e.sizeDesc
+	ch <- e.sizeLimitDesc
 }
 
 func (e *EmptydirCollector) Collect(ch chan<- prometheus.Metric) {
 	podemptydirList := e.getPodEmptydirList()
 	for _, pod_emptydir := range podemptydirList {
 		for vn, vs := range pod_emptydir.EmptydirListSizeBytes() {
-			e.size_gaugeVec.WithLabelValues(pod_emptydir.PodNamespace(), pod_emptydir.PodName(), pod_emptydir.PodHostIP(), vn).Set(float64(vs))
+			ch <- prometheus.MustNewConstMetric(e.sizeDesc, prometheus.GaugeValue, float64(vs), pod_emptydir.PodNamespace(), pod_emptydir.PodName(), pod_emptydir.PodHostIP(), vn)
 		}
 		for vn, vsl := range pod_emptydir.EmptydirListSizeLimitBytes() {
-			e.sizeLimit_gaugeVec.WithLabelValues(pod_emptydir.PodNamespace(), pod_emptydir.PodName(), pod_emptydir.PodHostIP(), vn).Set(float64(vsl))
+			ch <- prometheus.MustNewConstMetric(e.sizeLimitDesc, prometheus.GaugeValue, float64(vsl), pod_emptydir.PodNamespace(), pod_emptydir.PodName(), pod_emptydir.PodHostIP(), vn)
 		}
 	}
-	e.size_gaugeVec.Collect(ch)
-	e.sizeLimit_gaugeVec.Collect(ch)
 }
 
 func (e *EmptydirCollector) getPodEmptydirList() []volumes.IPodEmptydirs {
